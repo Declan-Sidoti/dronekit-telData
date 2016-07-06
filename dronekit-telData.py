@@ -60,6 +60,7 @@ class Data:
 class ClientProtocol(WebSocketClientProtocol):
     def __init__(self):
         self.telData = Data()
+	self.cmds = vehicle.commands
     #What to do once the socket is open
     def onOpen(self):
         print 2
@@ -83,15 +84,24 @@ class ClientProtocol(WebSocketClientProtocol):
     def digest(self, payload):
         try:
             payload = json.loads(payload)
+	#go to lat long and alt
             if 'simple_goto' in payload:
                 (lat ,lon, alt) = payload.get('simple_goto')
                 a_location = LocationGlobal(lat,lon,alt)
                 v.simple_goto(a_location)
                 print "go to lat,lon,alt"
-            elif 'change_mode' in payload:
-                mode = payload.get('change_mode')
- 
-                print "change mode"
+	#add waypoints
+            elif 'add_waypoint' in payload:
+                (lat, lon, alt) = payload.get('add_waypoint')
+		cmd = Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
+   		 0, 0, 0, 0, 0, 0,
+    		lat, lon, altitude)
+		self.cmds.add(cmd)
+		self.cmds.upload()
+	#clear waypoints
+	   elif 'clear_waypoints' in payload:
+		self.cmds.clear()
+                print "cleared waypoints"
             else: print ["No implementation for this payload:y"]+payload.keys()
         except Exception, e:
             print "Payload not JSON formatted string"
