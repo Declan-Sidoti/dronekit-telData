@@ -66,40 +66,36 @@ class ClientProtocol(WebSocketClientProtocol):
         #Send message to server with client identity and type
         self.sendMessage('[{"proto":{"identity":"'+str(uuid.uuid1())+'","type":"uav"}}]')
         LoopingCall(self.sendTelData).start(2)
+    #sends telemetry data from the pixhawk to the server	
     def sendTelData(self):
         self.sendMessage(self.telData.update())
         
     #What to do once the server is connected to the client
     def onConnect(self, response):
         print "Server Connected: {0}:".format(response.peer)
-        
-
-    
-    #What to do if the server sends the client a message
-#    def onMessage(self, payload, isBinary):
-#        if isBinary:
-#            print "Binary Message"
-#        else:
-#            self.digest(payload)
-#
-#    def digest(self, payload):
-#        try:
-#            payload = json.loads(payload)
-#            if 'capture' in payload:
-#                im = self.camera.sendImg()
-#                self.sendMessage(im)
-#            elif 'stream' in payload:
-#                self.video.startStream()
-#            else: print ["No implementation for this payload:y"]+payload.keys()
-#        except Exception, e:
-#            print "Payload not JSON formatted string"
-
-        
-        
-   
-    
-
+    #when the client gets a message from the server it calls digest with the payload
+    def onMessage(self, payload, isBinary):
+        if isBinary:
+            print "Binary Message"
+        else:
+            self.digest(payload)
+    #loads the json and gives commands to the drone through dronekit
+    def digest(self, payload):
+        try:
+            payload = json.loads(payload)
+            if 'simple_goto' in payload:
+                (lat ,lon, alt) = payload.get('simple_goto')
+                a_location = LocationGlobal(lat,lon,alt)
+                v.simple_goto(a_location)
+                print "go to lat,lon,alt"
+            elif 'change_mode' in payload:
+                mode = payload.get('change_mode')
  
+                print "change mode"
+            else: print ["No implementation for this payload:y"]+payload.keys()
+        except Exception, e:
+            print "Payload not JSON formatted string"
+            print e
 
 
 factory = WebSocketClientFactory(u"ws://www.csuiteexperiment.com:9002")
@@ -107,20 +103,4 @@ factory.protocol = ClientProtocol
 reactor.connectTCP("www.csuiteexperiment.com", 9002, factory)
 reactor.run()
 
-#translation layer that takes in json of some format
-#on message, lookat the json, parse
 
-# onMessage(self, payload)
-    #try:
-    #       payload = json.loads(payload)
-    #except:
-    #       pass
-"""
-    {"command":{"simple_goto":[lat, lon, alt]}}
-               {"change_mode":0}
-    }
-    if "command" in payload:
-        if "simple_goto" in payload.get("command"):
-            (lat, lon, alt) = payload.get("command").get("simple_goto")
-            mavproxy
-"""
